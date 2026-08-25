@@ -16,7 +16,7 @@ end)
 local player = Players.LocalPlayer
 local playerScripts = player:WaitForChild("PlayerScripts")
 
--- Mengambil Controller dengan proteksi aman (tidak bakal error nil)
+-- Mengambil Controller dengan proteksi aman
 local CampaignController, CoopController = nil, nil
 pcall(function()
     CampaignController = require(playerScripts:WaitForChild("Features"):WaitForChild("Battle"):WaitForChild("campaign"):WaitForChild("CampaignController"))
@@ -158,12 +158,12 @@ towerDelayBox.FocusLost:Connect(function()
     if val and val > 0 then towerDelay = val else towerDelayBox.Text = tostring(towerDelay) end
 end)
 
--- LOOP 1: Auto Rebirth
+-- LOOP 1: Auto Rebirth (Dengan proteksi eksklusif)
 task.spawn(function()
     while true do
         if isAutoRebirthActive and RemotesModule then
             pcall(function()
-                if RemotesModule.defs and RemotesModule.defs.Rebirth then
+                if type(RemotesModule.invoke) == "function" and RemotesModule.defs and RemotesModule.defs.Rebirth then
                     RemotesModule.invoke(RemotesModule.defs.Rebirth)
                 end
             end)
@@ -183,7 +183,7 @@ task.spawn(function()
                     CampaignController.start()
                 end
 
-                if RemotesModule and RemotesModule.defs then
+                if RemotesModule and type(RemotesModule.invoke) == "function" and RemotesModule.defs then
                     if RemotesModule.defs.CampaignStart then
                         RemotesModule.invoke(RemotesModule.defs.CampaignStart)
                     elseif RemotesModule.defs.TowerStart then
@@ -201,7 +201,7 @@ task.spawn(function()
     while true do
         if isAutoUpgradeFeederActive and RemotesModule then
             pcall(function()
-                if RemotesModule.defs then
+                if type(RemotesModule.invoke) == "function" and RemotesModule.defs then
                     if RemotesModule.defs.BuyGenerator then
                         for i = 1, 6 do
                             RemotesModule.invoke(RemotesModule.defs.BuyGenerator, i)
@@ -221,15 +221,15 @@ task.spawn(function()
     end
 end)
 
--- LOOP 4: Auto Skip Continue
+-- LOOP 4: Auto Skip Continue (Diamankan dari fungsi nil)
 task.spawn(function()
     pcall(function()
-        if RemotesModule and RemotesModule.defs and RemotesModule.defs.TowerContinueOffer then
+        if RemotesModule and type(RemotesModule.onClient) == "function" and RemotesModule.defs and RemotesModule.defs.TowerContinueOffer then
             RemotesModule.onClient(RemotesModule.defs.TowerContinueOffer, function(p1)
                 if isAutoSkipContinueActive and type(p1) == "table" and p1.open == true then
                     task.wait(1)
                     pcall(function()
-                        if RemotesModule.defs.TowerContinueDecline then
+                        if type(RemotesModule.fire) == "function" and RemotesModule.defs.TowerContinueDecline then
                             RemotesModule.fire(RemotesModule.defs.TowerContinueDecline)
                         end
                     end)
