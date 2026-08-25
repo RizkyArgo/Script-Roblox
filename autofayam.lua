@@ -6,12 +6,17 @@ end
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RemotesModule = require(ReplicatedStorage:WaitForChild("Core"):WaitForChild("Remotes"))
+
+-- Ambil modul Remotes dengan aman
+local RemotesModule = nil
+pcall(function()
+    RemotesModule = require(ReplicatedStorage:WaitForChild("Core"):WaitForChild("Remotes"))
+end)
 
 local player = Players.LocalPlayer
 local playerScripts = player:WaitForChild("PlayerScripts")
 
--- Mengambil Controller yang dibutuhkan
+-- Mengambil Controller dengan proteksi aman (tidak bakal error nil)
 local CampaignController, CoopController = nil, nil
 pcall(function()
     CampaignController = require(playerScripts:WaitForChild("Features"):WaitForChild("Battle"):WaitForChild("campaign"):WaitForChild("CampaignController"))
@@ -20,7 +25,7 @@ pcall(function()
     CoopController = require(playerScripts:WaitForChild("Features"):WaitForChild("Coop"):WaitForChild("CoopController"))
 end)
 
--- Status Fitur & Pengaturan Delay (Default dalam detik)
+-- Status Fitur & Pengaturan Delay
 local isAutoRebirthActive = false
 local rebirthDelay = 2
 
@@ -28,6 +33,7 @@ local isAutoTowerActive = false
 local towerDelay = 4
 
 local isAutoUpgradeFeederActive = false
+local isAutoSkipContinueActive = true
 
 -- Setup GUI Panel
 local gui = Instance.new("ScreenGui")
@@ -35,7 +41,7 @@ gui.Name = "AutoFarmPanel"
 gui.Parent = CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 240, 0, 245)
+frame.Size = UDim2.new(0, 240, 0, 280)
 frame.Position = UDim2.new(0.02, 0, 0.60, 0)
 frame.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
 frame.BorderSizePixel = 0
@@ -59,7 +65,6 @@ local titleCorner = Instance.new("UICorner")
 titleCorner.CornerRadius = UDim.new(0, 6)
 titleCorner.Parent = title
 
--- Tombol Close [X]
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 30, 0, 30)
 closeBtn.Position = UDim2.new(1, -30, 0, 0)
@@ -74,26 +79,23 @@ closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Fungsi Pembuat Tombol
-local function createButton(text, yPos)
+local function createButton(text, yPos, defaultState)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -16, 0, 30)
     btn.Position = UDim2.new(0, 8, 0, yPos)
-    btn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+    btn.BackgroundColor3 = defaultState and Color3.fromRGB(0, 160, 90) or Color3.fromRGB(180, 50, 50)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.TextSize = 11
     btn.Font = Enum.Font.GothamBold
-    btn.Text = text .. ": OFF"
+    btn.Text = text .. ": " .. (defaultState and "ON" or "OFF")
     btn.Parent = frame
 
     local btnCorner = Instance.new("UICorner")
     btnCorner.CornerRadius = UDim.new(0, 4)
     btnCorner.Parent = btn
-
     return btn
 end
 
--- Fungsi Pembuat Kotak Input Delay
 local function createDelayInput(placeholderText, defaultVal, yPos)
     local box = Instance.new("TextBox")
     box.Size = UDim2.new(1, -16, 0, 24)
@@ -110,20 +112,18 @@ local function createDelayInput(placeholderText, defaultVal, yPos)
     local boxCorner = Instance.new("UICorner")
     boxCorner.CornerRadius = UDim.new(0, 4)
     boxCorner.Parent = box
-
     return box
 end
 
--- Susunan Komponen UI
-local rebirthBtn = createButton("Auto Rebirth", 36)
+local rebirthBtn = createButton("Auto Rebirth", 36, isAutoRebirthActive)
 local rebirthDelayBox = createDelayInput("Delay Rebirth (detik)", rebirthDelay, 70)
 
-local towerBtn = createButton("Auto Start Tower", 100)
+local towerBtn = createButton("Auto Start Tower", 100, isAutoTowerActive)
 local towerDelayBox = createDelayInput("Delay Tower (detik)", towerDelay, 134)
 
-local upgradeFeederBtn = createButton("Auto Upgrade Feeder", 164)
+local upgradeFeederBtn = createButton("Auto Upgrade Feeder", 164, isAutoUpgradeFeederActive)
+local skipContinueBtn = createButton("Auto Skip Continue", 198, isAutoSkipContinueActive)
 
--- Aksi Tombol On/Off
 rebirthBtn.MouseButton1Click:Connect(function()
     isAutoRebirthActive = not isAutoRebirthActive
     rebirthBtn.BackgroundColor3 = isAutoRebirthActive and Color3.fromRGB(0, 160, 90) or Color3.fromRGB(180, 50, 50)
@@ -142,31 +142,30 @@ upgradeFeederBtn.MouseButton1Click:Connect(function()
     upgradeFeederBtn.Text = "Auto Upgrade Feeder: " .. (isAutoUpgradeFeederActive and "ON" or "OFF")
 end)
 
--- Update Nilai Delay saat kotak diketik
+skipContinueBtn.MouseButton1Click:Connect(function()
+    isAutoSkipContinueActive = not isAutoSkipContinueActive
+    skipContinueBtn.BackgroundColor3 = isAutoSkipContinueActive and Color3.fromRGB(0, 160, 90) or Color3.fromRGB(180, 50, 50)
+    skipContinueBtn.Text = "Auto Skip Continue: " .. (isAutoSkipContinueActive and "ON" or "OFF")
+end)
+
 rebirthDelayBox.FocusLost:Connect(function()
     local val = tonumber(rebirthDelayBox.Text)
-    if val and val > 0 then
-        rebirthDelay = val
-    else
-        rebirthDelayBox.Text = tostring(rebirthDelay)
-    end
+    if val and val > 0 then rebirthDelay = val else rebirthDelayBox.Text = tostring(rebirthDelay) end
 end)
 
 towerDelayBox.FocusLost:Connect(function()
     local val = tonumber(towerDelayBox.Text)
-    if val and val > 0 then
-        towerDelay = val
-    else
-        towerDelayBox.Text = tostring(towerDelay)
-    end
+    if val and val > 0 then towerDelay = val else towerDelayBox.Text = tostring(towerDelay) end
 end)
 
 -- LOOP 1: Auto Rebirth
 task.spawn(function()
     while true do
-        if isAutoRebirthActive then
+        if isAutoRebirthActive and RemotesModule then
             pcall(function()
-                RemotesModule.invoke(RemotesModule.defs.Rebirth)
+                if RemotesModule.defs and RemotesModule.defs.Rebirth then
+                    RemotesModule.invoke(RemotesModule.defs.Rebirth)
+                end
             end)
         end
         task.wait(rebirthDelay)
@@ -184,10 +183,12 @@ task.spawn(function()
                     CampaignController.start()
                 end
 
-                if RemotesModule.defs.CampaignStart then
-                    RemotesModule.invoke(RemotesModule.defs.CampaignStart)
-                elseif RemotesModule.defs.TowerStart then
-                    RemotesModule.invoke(RemotesModule.defs.TowerStart)
+                if RemotesModule and RemotesModule.defs then
+                    if RemotesModule.defs.CampaignStart then
+                        RemotesModule.invoke(RemotesModule.defs.CampaignStart)
+                    elseif RemotesModule.defs.TowerStart then
+                        RemotesModule.invoke(RemotesModule.defs.TowerStart)
+                    end
                 end
             end)
         end
@@ -195,34 +196,22 @@ task.spawn(function()
     end
 end)
 
--- LOOP 3: Auto Buy & Auto Upgrade Feeder
+-- LOOP 3: Auto Upgrade Feeder
 task.spawn(function()
     while true do
-        if isAutoUpgradeFeederActive then
+        if isAutoUpgradeFeederActive and RemotesModule then
             pcall(function()
-                if RemotesModule.defs.BuyGenerator then
-                    for i = 1, 6 do
-                        RemotesModule.invoke(RemotesModule.defs.BuyGenerator, i)
-                        task.wait(0.1)
+                if RemotesModule.defs then
+                    if RemotesModule.defs.BuyGenerator then
+                        for i = 1, 6 do
+                            RemotesModule.invoke(RemotesModule.defs.BuyGenerator, i)
+                            task.wait(0.1)
+                        end
                     end
-                elseif RemotesModule.defs.PurchaseGenerator then
-                    for i = 1, 6 do
-                        RemotesModule.invoke(RemotesModule.defs.PurchaseGenerator, i)
-                        task.wait(0.1)
-                    end
-                end
-
-                if RemotesModule.defs.UpgradeGenerator then
-                    for i = 1, 6 do
-                        RemotesModule.invoke(RemotesModule.defs.UpgradeGenerator, i)
-                        task.wait(0.1)
-                    end
-                elseif CoopController and type(CoopController.coopView) == "function" then
-                    local data = CoopController.coopView()
-                    if data and data.gens then
-                        for slotNum, _ in pairs(data.gens) do
-                            CoopController.upgradeGenerator(slotNum)
-                            task.wait(0.2)
+                    if RemotesModule.defs.UpgradeGenerator then
+                        for i = 1, 6 do
+                            RemotesModule.invoke(RemotesModule.defs.UpgradeGenerator, i)
+                            task.wait(0.1)
                         end
                     end
                 end
@@ -230,4 +219,22 @@ task.spawn(function()
         end
         task.wait(1.5)
     end
+end)
+
+-- LOOP 4: Auto Skip Continue
+task.spawn(function()
+    pcall(function()
+        if RemotesModule and RemotesModule.defs and RemotesModule.defs.TowerContinueOffer then
+            RemotesModule.onClient(RemotesModule.defs.TowerContinueOffer, function(p1)
+                if isAutoSkipContinueActive and type(p1) == "table" and p1.open == true then
+                    task.wait(1)
+                    pcall(function()
+                        if RemotesModule.defs.TowerContinueDecline then
+                            RemotesModule.fire(RemotesModule.defs.TowerContinueDecline)
+                        end
+                    end)
+                end
+            end)
+        end
+    end)
 end)
