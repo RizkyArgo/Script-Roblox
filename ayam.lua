@@ -34,16 +34,17 @@ local towerDelay = 4
 
 local isAutoUpgradeFeederActive = false
 local isAutoSkipContinueActive = true 
-local isAutoElevatorActive = true -- Fitur Baru: Auto pilih lantai tertinggi elevator di awal
+local isAutoElevatorActive = true
+local isAutoUpgradeRecyclerActive = false -- Fitur Baru: Auto Upgrade Recycler
 
--- Setup GUI Panel (Tinggi ditambah agar muat semua tombol)
+-- Setup GUI Panel (Tinggi ditambah agar muat tombol Recycler)
 local gui = Instance.new("ScreenGui")
 gui.Name = "AutoFarmPanel"
 gui.Parent = CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 240, 0, 315)
-frame.Position = UDim2.new(0.02, 0, 0.60, 0)
+frame.Size = UDim2.new(0, 240, 0, 355)
+frame.Position = UDim2.new(0.02, 0, 0.55, 0)
 frame.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
 frame.BorderSizePixel = 0
 frame.Parent = gui
@@ -58,7 +59,7 @@ title.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 12
 title.Font = Enum.Font.GothamBold
-title.Text = "    Auto Farm Panel"
+title.Text = "     Auto Farm Panel"
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = frame
 
@@ -159,7 +160,8 @@ local towerDelayBox = createDelayInput("Delay Tower (detik)", towerDelay, 134)
 
 local upgradeFeederBtn = createButton("Auto Upgrade Feeder", 164, isAutoUpgradeFeederActive)
 local skipContinueBtn = createButton("Auto Skip Continue", 198, isAutoSkipContinueActive)
-local elevatorBtn = createButton("Auto High Floor Elevator", 232, isAutoElevatorActive) -- Tombol Baru
+local elevatorBtn = createButton("Auto High Floor Elevator", 232, isAutoElevatorActive)
+local upgradeRecyclerBtn = createButton("Auto Upgrade Recycler", 266, isAutoUpgradeRecyclerActive) -- Tombol Baru
 
 -- Aksi Tombol On/Off
 rebirthBtn.MouseButton1Click:Connect(function()
@@ -190,6 +192,12 @@ elevatorBtn.MouseButton1Click:Connect(function()
     isAutoElevatorActive = not isAutoElevatorActive
     elevatorBtn.BackgroundColor3 = isAutoElevatorActive and Color3.fromRGB(0, 160, 90) or Color3.fromRGB(180, 50, 50)
     elevatorBtn.Text = "Auto High Floor Elevator: " .. (isAutoElevatorActive and "ON" or "OFF")
+end)
+
+upgradeRecyclerBtn.MouseButton1Click:Connect(function()
+    isAutoUpgradeRecyclerActive = not isAutoUpgradeRecyclerActive
+    upgradeRecyclerBtn.BackgroundColor3 = isAutoUpgradeRecyclerActive and Color3.fromRGB(0, 160, 90) or Color3.fromRGB(180, 50, 50)
+    upgradeRecyclerBtn.Text = "Auto Upgrade Recycler: " .. (isAutoUpgradeRecyclerActive and "ON" or "OFF")
 end)
 
 -- Update Nilai Delay saat kotak diketik
@@ -307,21 +315,16 @@ task.spawn(function()
             pcall(function()
                 local playerGui = player:WaitForChild("PlayerGui")
                 
-                -- Cari apakah ScreenGui TowerElevator sedang aktif di layar
                 for _, guiObj in ipairs(playerGui:GetChildren()) do
                     if guiObj.Name == "TowerElevator" or guiObj:FindFirstChild("card", true) then
-                        -- Cari semua tombol atau teks di dalam GUI tersebut
                         for _, descendant in ipairs(guiObj:GetDescendants()) do
                             if descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
                                 local text = string.lower(descendant.Text)
-                                -- Deteksi teks yang menandakan lantai tertinggi (biasanya "to top" atau "top")
                                 if text:find("to top") or text:find("lantai") then
-                                    -- Cari tombol beli (Buy Button) terdekat dari teks tersebut
                                     local parentFrame = descendant.Parent
                                     if parentFrame then
                                         for _, sibling in ipairs(parentFrame.Parent:GetDescendants()) do
                                             if sibling:IsA("TextButton") and (sibling.Text:find("M") or sibling.Text:find("K") or tonumber(sibling.Text)) then
-                                                -- Kirim sinyal klik virtual ke tombol tersebut
                                                 task.wait(0.3)
                                                 for _, connection in pairs(getconnections(sibling.MouseButton1Click)) do
                                                     connection:Fire()
@@ -338,5 +341,19 @@ task.spawn(function()
             end)
         end
         task.wait(1)
+    end
+end)
+
+-- LOOP 6: Auto Upgrade Recycler via Remote Event
+task.spawn(function()
+    while true do
+        if isAutoUpgradeRecyclerActive and RemotesModule then
+            pcall(function()
+                if RemotesModule.defs.UpgradeRecycler then
+                    RemotesModule.invoke(RemotesModule.defs.UpgradeRecycler)
+                end
+            end)
+        end
+        task.wait(2) -- Cek upgrade setiap 2 detik
     end
 end)
