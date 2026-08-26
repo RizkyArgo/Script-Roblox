@@ -34,16 +34,15 @@ local towerDelay = 4
 
 local isAutoUpgradeFeederActive = false
 local isAutoSkipContinueActive = true 
-local isAutoElevatorActive = true
-local isAutoUpgradeRecyclerActive = false -- Fitur Baru: Auto Upgrade Recycler
+local isAutoUpgradeRecyclerActive = false
 
--- Setup GUI Panel (Tinggi ditambah agar muat tombol Recycler)
+-- Setup GUI Panel (Tinggi disesuaikan karena tombol elevator dihapus)
 local gui = Instance.new("ScreenGui")
 gui.Name = "AutoFarmPanel"
 gui.Parent = CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 240, 0, 355)
+frame.Size = UDim2.new(0, 240, 0, 320)
 frame.Position = UDim2.new(0.02, 0, 0.55, 0)
 frame.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
 frame.BorderSizePixel = 0
@@ -160,8 +159,7 @@ local towerDelayBox = createDelayInput("Delay Tower (detik)", towerDelay, 134)
 
 local upgradeFeederBtn = createButton("Auto Upgrade Feeder", 164, isAutoUpgradeFeederActive)
 local skipContinueBtn = createButton("Auto Skip Continue", 198, isAutoSkipContinueActive)
-local elevatorBtn = createButton("Auto High Floor Elevator", 232, isAutoElevatorActive)
-local upgradeRecyclerBtn = createButton("Auto Upgrade Recycler", 266, isAutoUpgradeRecyclerActive) -- Tombol Baru
+local upgradeRecyclerBtn = createButton("Auto Upgrade Recycler", 232, isAutoUpgradeRecyclerActive)
 
 -- Aksi Tombol On/Off
 rebirthBtn.MouseButton1Click:Connect(function()
@@ -186,12 +184,6 @@ skipContinueBtn.MouseButton1Click:Connect(function()
     isAutoSkipContinueActive = not isAutoSkipContinueActive
     skipContinueBtn.BackgroundColor3 = isAutoSkipContinueActive and Color3.fromRGB(0, 160, 90) or Color3.fromRGB(180, 50, 50)
     skipContinueBtn.Text = "Auto Skip Continue: " .. (isAutoSkipContinueActive and "ON" or "OFF")
-end)
-
-elevatorBtn.MouseButton1Click:Connect(function()
-    isAutoElevatorActive = not isAutoElevatorActive
-    elevatorBtn.BackgroundColor3 = isAutoElevatorActive and Color3.fromRGB(0, 160, 90) or Color3.fromRGB(180, 50, 50)
-    elevatorBtn.Text = "Auto High Floor Elevator: " .. (isAutoElevatorActive and "ON" or "OFF")
 end)
 
 upgradeRecyclerBtn.MouseButton1Click:Connect(function()
@@ -308,43 +300,7 @@ task.spawn(function()
     end)
 end)
 
--- LOOP 5: Auto Klik Tombol Elevator Tertinggi Berdasarkan UI yang Muncul di Layar
-task.spawn(function()
-    while true do
-        if isAutoElevatorActive then
-            pcall(function()
-                local playerGui = player:WaitForChild("PlayerGui")
-                
-                for _, guiObj in ipairs(playerGui:GetChildren()) do
-                    if guiObj.Name == "TowerElevator" or guiObj:FindFirstChild("card", true) then
-                        for _, descendant in ipairs(guiObj:GetDescendants()) do
-                            if descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
-                                local text = string.lower(descendant.Text)
-                                if text:find("to top") or text:find("lantai") then
-                                    local parentFrame = descendant.Parent
-                                    if parentFrame then
-                                        for _, sibling in ipairs(parentFrame.Parent:GetDescendants()) do
-                                            if sibling:IsA("TextButton") and (sibling.Text:find("M") or sibling.Text:find("K") or tonumber(sibling.Text)) then
-                                                task.wait(0.3)
-                                                for _, connection in pairs(getconnections(sibling.MouseButton1Click)) do
-                                                    connection:Fire()
-                                                end
-                                                break
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-        task.wait(1)
-    end
-end)
-
--- LOOP 6: Auto Upgrade Recycler via Remote Event
+-- LOOP 5: Auto Upgrade Recycler via Remote Event
 task.spawn(function()
     while true do
         if isAutoUpgradeRecyclerActive and RemotesModule then
@@ -354,6 +310,6 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(2) -- Cek upgrade setiap 2 detik
+        task.wait(1)
     end
 end)
