@@ -48,14 +48,14 @@ local isAutoUpgradeFeederActive = false
 local isAutoSkipContinueActive = true 
 local isAutoUpgradeRecyclerActive = false
 
--- Setup GUI Panel (Tinggi diubah menjadi 216 agar pas)
+-- Setup GUI Panel
 local gui = Instance.new("ScreenGui")
 gui.Name = "AutoFarmPanel"
 gui.ResetOnSpawn = false
 gui.Parent = targetGuiParent
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 240, 0, 216)
+frame.Size = UDim2.new(0, 240, 0, 246)
 frame.Position = UDim2.new(0.02, 0, 0.48, 0)
 frame.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
 frame.BorderSizePixel = 0
@@ -71,13 +71,28 @@ title.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 12
 title.Font = Enum.Font.GothamBold
-title.Text = "     Auto Farm"
+title.Text = "     Auto Farm [Tower Value Monitor]"
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = frame
 
 local titleCorner = Instance.new("UICorner")
 titleCorner.CornerRadius = UDim.new(0, 6)
 titleCorner.Parent = title
+
+-- LABEL MONITOR TOWER (Berdasarkan script test yang berhasil mendeteksi "Tower: X")
+local debugLabel = Instance.new("TextLabel")
+debugLabel.Size = UDim2.new(1, -16, 0, 24)
+debugLabel.Position = UDim2.new(0, 8, 0, 34)
+debugLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+debugLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
+debugLabel.TextSize = 10
+debugLabel.Font = Enum.Font.Code
+debugLabel.Text = "Tower Val: Mencari..."
+debugLabel.Parent = frame
+
+local debugCorner = Instance.new("UICorner")
+debugCorner.CornerRadius = UDim.new(0, 4)
+debugCorner.Parent = debugLabel
 
 -- FITUR DRAGGABLE
 local dragging, dragInput, dragStart, startPos
@@ -167,7 +182,7 @@ local function createButtonWithRightInput(text, defaultState, placeholderText, y
     box.TextSize = 10
     box.Font = Enum.Font.Gotham
     box.PlaceholderText = placeholderText
-    box.Text = "" -- Memastikan teks di dalam box kosong
+    box.Text = "" 
     box.Parent = frame
 
     local boxCorner = Instance.new("UICorner")
@@ -178,11 +193,13 @@ local function createButtonWithRightInput(text, defaultState, placeholderText, y
 end
 
 -- Susunan Komponen UI
-local rebirthBtn = createButton("Auto Rebirth", 36, isAutoRebirthActive)
-local towerBtn, towerDelayBox = createButtonWithRightInput("Auto Tower", isAutoTowerActive, "Delay", 72)
-local surrenderBtn, surrenderInputBox = createButtonWithRightInput("Auto Surrender", isAutoSurrenderActive, "Detik", 108)
-local upgradeFeederBtn = createButton("Auto Upgrade Feeder", 144, isAutoUpgradeFeederActive)
-local upgradeRecyclerBtn = createButton("Auto Upgrade Recycler", 180, isAutoUpgradeRecyclerActive)
+local rebirthBtn = createButton("Auto Rebirth", 64, isAutoRebirthActive)
+local towerBtn, towerDelayBox = createButtonWithRightInput("Auto Tower", isAutoTowerActive, "Delay", 100)
+local surrenderBtn, surrenderInputBox = createButtonWithRightInput("Auto Surrender", isAutoSurrenderActive, "Target Floor", 136)
+local upgradeFeederBtn = createButton("Auto Upgrade Feeder", 172, isAutoUpgradeFeederActive)
+local upgradeRecyclerBtn = createButton("Auto Upgrade Recycler", 208, isAutoUpgradeRecyclerActive)
+
+frame.Size = UDim2.new(0, 240, 0, 244)
 
 -- Aksi Tombol On/Off
 rebirthBtn.MouseButton1Click:Connect(function()
@@ -215,7 +232,7 @@ upgradeRecyclerBtn.MouseButton1Click:Connect(function()
     upgradeRecyclerBtn.Text = "Auto Upgrade Recycler: " .. (isAutoUpgradeRecyclerActive and "ON" or "OFF")
 end)
 
--- Simpan Nilai Kotak Input (Jika diisi user, ubah variabel. Jika kosong, pakai default)
+-- Simpan Nilai Kotak Input
 towerDelayBox.FocusLost:Connect(function()
     local val = tonumber(towerDelayBox.Text)
     if val and val > 0 then 
@@ -226,7 +243,7 @@ towerDelayBox.FocusLost:Connect(function()
 end)
 
 surrenderInputBox.FocusLost:Connect(function()
-    local val = tonumber(surrenderInputBox.Text)
+    val = tonumber(surrenderInputBox.Text)
     if val and val > 0 then 
         targetSurrenderFloor = val 
     else 
@@ -234,7 +251,7 @@ surrenderInputBox.FocusLost:Connect(function()
     end
 end)
 
--- LOOP 1: Auto Rebirth (Fix 0.1)
+-- LOOP 1: Auto Rebirth
 task.spawn(function()
     while true do
         if isAutoRebirthActive and RemotesModule then
@@ -272,21 +289,58 @@ task.spawn(function()
     end
 end)
 
--- LOOP 3: Auto Surrender
+-- LOOP 3: Auto Surrender dengan Integrasi Deteksi Object Value "Tower" yang Ditemukan
 task.spawn(function()
+    local targetValObj = nil
+    
+    -- Cari objek value game yang namanya mengandung kata "tower" atau "best"
+    for _, obj in ipairs(player:GetDescendants()) do
+        if obj:IsA("IntValue") or obj:IsA("NumberValue") then
+            local name = obj.Name:lower()
+            if name:find("tower") or name:find("best") then
+                targetValObj = obj
+                break
+            end
+        end
+    end
+    
     while true do
-        if isAutoSurrenderActive and RemotesModule then
-            local waitTime = tonumber(surrenderInputBox.Text) or targetSurrenderFloor
-            task.wait(waitTime)
-            
+        local customTarget = tonumber(surrenderInputBox.Text)
+        local activeTarget = (customTarget and customTarget > 0) and customTarget or 60
+        
+        local currentFloorNum = nil
+        
+        -- Ambil nilai langsung dari objek value yang terdeteksi
+        if targetValObj then
+            currentFloorNum = targetValObj.Value
+            debugLabel.Text = targetValObj.Name .. ": " .. tostring(currentFloorNum)
+            debugLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
+        else
+            -- Coba cari ulang jika belum ketemu di awal
+            for _, obj in ipairs(player:GetDescendants()) do
+                if obj:IsA("IntValue") or obj:IsA("NumberValue") then
+                    local name = obj.Name:lower()
+                    if name:find("tower") or name:find("best") then
+                        targetValObj = obj
+                        break
+                    end
+                end
+            end
+            debugLabel.Text = "Tower Value: Mencari..."
+            debugLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
+        end
+        
+        -- Eksekusi Surrender jika fitur aktif dan floor sudah mencapai target
+        if isAutoSurrenderActive and RemotesModule and currentFloorNum and type(currentFloorNum) == "number" and currentFloorNum >= activeTarget then
             pcall(function()
-                if isAutoSurrenderActive and RemotesModule.defs.TowerSurrender then
+                if RemotesModule.defs and RemotesModule.defs.TowerSurrender then
                     RemotesModule.invoke(RemotesModule.defs.TowerSurrender)
                 end
             end)
-        else
-            task.wait(2)
+            task.wait(5)
         end
+        
+        task.wait(1)
     end
 end)
 
@@ -331,7 +385,7 @@ task.spawn(function()
     end
 end)
 
--- LOOP 5: Auto Skip Continue (Otomatis ON Permanen di Background)
+-- LOOP 5: Auto Skip Continue
 task.spawn(function()
     pcall(function()
         if RemotesModule and RemotesModule.onClient and RemotesModule.defs and RemotesModule.defs.TowerContinueOffer then
