@@ -47,6 +47,8 @@ local targetSurrenderFloor = 60
 local isAutoUpgradeFeederActive = false
 local isAutoSkipContinueActive = true 
 local isAutoUpgradeRecyclerActive = false
+local isAutoBestTowerActive = false 
+local bestTowerDelay = 5
 
 -- Setup GUI Panel
 local gui = Instance.new("ScreenGui")
@@ -55,7 +57,7 @@ gui.ResetOnSpawn = false
 gui.Parent = targetGuiParent
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 240, 0, 246)
+frame.Size = UDim2.new(0, 240, 0, 316)
 frame.Position = UDim2.new(0.02, 0, 0.48, 0)
 frame.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
 frame.BorderSizePixel = 0
@@ -71,7 +73,7 @@ title.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 12
 title.Font = Enum.Font.GothamBold
-title.Text = "     Auto Farm [Tower Value Monitor]"
+title.Text = "     Auto Farm [Extended Panel]"
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = frame
 
@@ -79,15 +81,15 @@ local titleCorner = Instance.new("UICorner")
 titleCorner.CornerRadius = UDim.new(0, 6)
 titleCorner.Parent = title
 
--- LABEL MONITOR TOWER (Berdasarkan script test yang berhasil mendeteksi "Tower: X")
+-- LABEL MONITOR TOWER
 local debugLabel = Instance.new("TextLabel")
 debugLabel.Size = UDim2.new(1, -16, 0, 24)
 debugLabel.Position = UDim2.new(0, 8, 0, 34)
 debugLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-debugLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
+debugLabel.TextColor3 = Color3.fromRGB(180, 50, 50)
 debugLabel.TextSize = 10
 debugLabel.Font = Enum.Font.Code
-debugLabel.Text = "Tower Val: Mencari..."
+debugLabel.Text = "Auto Surrender: OFF"
 debugLabel.Parent = frame
 
 local debugCorner = Instance.new("UICorner")
@@ -138,7 +140,6 @@ closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Fungsi Pembuat Tombol Standar
 local function createButton(text, yPos, defaultState)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -16, 0, 28)
@@ -157,7 +158,6 @@ local function createButton(text, yPos, defaultState)
     return btn
 end
 
--- Fungsi Pembuat Tombol dengan Input Kosong di Kanan
 local function createButtonWithRightInput(text, defaultState, placeholderText, yPos)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.62, -10, 0, 28)
@@ -192,16 +192,13 @@ local function createButtonWithRightInput(text, defaultState, placeholderText, y
     return btn, box
 end
 
--- Susunan Komponen UI
 local rebirthBtn = createButton("Auto Rebirth", 64, isAutoRebirthActive)
 local towerBtn, towerDelayBox = createButtonWithRightInput("Auto Tower", isAutoTowerActive, "Delay", 100)
 local surrenderBtn, surrenderInputBox = createButtonWithRightInput("Auto Surrender", isAutoSurrenderActive, "Target Floor", 136)
 local upgradeFeederBtn = createButton("Auto Upgrade Feeder", 172, isAutoUpgradeFeederActive)
 local upgradeRecyclerBtn = createButton("Auto Upgrade Recycler", 208, isAutoUpgradeRecyclerActive)
+local bestTowerBtn, bestTowerDelayBox = createButtonWithRightInput("Auto Best Tower", isAutoBestTowerActive, "Delay", 244)
 
-frame.Size = UDim2.new(0, 240, 0, 244)
-
--- Aksi Tombol On/Off
 rebirthBtn.MouseButton1Click:Connect(function()
     isAutoRebirthActive = not isAutoRebirthActive
     rebirthBtn.BackgroundColor3 = isAutoRebirthActive and Color3.fromRGB(0, 160, 90) or Color3.fromRGB(180, 50, 50)
@@ -218,6 +215,10 @@ surrenderBtn.MouseButton1Click:Connect(function()
     isAutoSurrenderActive = not isAutoSurrenderActive
     surrenderBtn.BackgroundColor3 = isAutoSurrenderActive and Color3.fromRGB(0, 160, 90) or Color3.fromRGB(180, 50, 50)
     surrenderBtn.Text = "Auto Surrender: " .. (isAutoSurrenderActive and "ON" or "OFF")
+    if not isAutoSurrenderActive then
+        debugLabel.Text = "Auto Surrender: OFF"
+        debugLabel.TextColor3 = Color3.fromRGB(180, 50, 50)
+    end
 end)
 
 upgradeFeederBtn.MouseButton1Click:Connect(function()
@@ -232,32 +233,32 @@ upgradeRecyclerBtn.MouseButton1Click:Connect(function()
     upgradeRecyclerBtn.Text = "Auto Upgrade Recycler: " .. (isAutoUpgradeRecyclerActive and "ON" or "OFF")
 end)
 
--- Simpan Nilai Kotak Input
+bestTowerBtn.MouseButton1Click:Connect(function()
+    isAutoBestTowerActive = not isAutoBestTowerActive
+    bestTowerBtn.BackgroundColor3 = isAutoBestTowerActive and Color3.fromRGB(0, 160, 90) or Color3.fromRGB(180, 50, 50)
+    bestTowerBtn.Text = "Auto Best Tower: " .. (isAutoBestTowerActive and "ON" or "OFF")
+end)
+
 towerDelayBox.FocusLost:Connect(function()
     local val = tonumber(towerDelayBox.Text)
-    if val and val > 0 then 
-        towerDelay = val 
-    else 
-        towerDelayBox.Text = "" 
-    end
+    if val and val > 0 then towerDelay = val else towerDelayBox.Text = "" end
 end)
 
 surrenderInputBox.FocusLost:Connect(function()
-    val = tonumber(surrenderInputBox.Text)
-    if val and val > 0 then 
-        targetSurrenderFloor = val 
-    else 
-        surrenderInputBox.Text = "" 
-    end
+    local val = tonumber(surrenderInputBox.Text)
+    if val and val > 0 then targetSurrenderFloor = val else surrenderInputBox.Text = "" end
+end)
+
+bestTowerDelayBox.FocusLost:Connect(function()
+    local val = tonumber(bestTowerDelayBox.Text)
+    if val and val > 0 then bestTowerDelay = val else bestTowerDelayBox.Text = "" end
 end)
 
 -- LOOP 1: Auto Rebirth
 task.spawn(function()
     while true do
         if isAutoRebirthActive and RemotesModule then
-            pcall(function()
-                RemotesModule.invoke(RemotesModule.defs.Rebirth)
-            end)
+            pcall(function() RemotesModule.invoke(RemotesModule.defs.Rebirth) end)
         end
         task.wait(rebirthDelay)
     end
@@ -289,34 +290,11 @@ task.spawn(function()
     end
 end)
 
--- LOOP 3: Auto Surrender dengan Integrasi Deteksi Object Value "Tower" yang Ditemukan
+-- LOOP 3: Auto Surrender (Aman, mati jika tombol OFF)
 task.spawn(function()
-    local targetValObj = nil
-    
-    -- Cari objek value game yang namanya mengandung kata "tower" atau "best"
-    for _, obj in ipairs(player:GetDescendants()) do
-        if obj:IsA("IntValue") or obj:IsA("NumberValue") then
-            local name = obj.Name:lower()
-            if name:find("tower") or name:find("best") then
-                targetValObj = obj
-                break
-            end
-        end
-    end
-    
     while true do
-        local customTarget = tonumber(surrenderInputBox.Text)
-        local activeTarget = (customTarget and customTarget > 0) and customTarget or 60
-        
-        local currentFloorNum = nil
-        
-        -- Ambil nilai langsung dari objek value yang terdeteksi
-        if targetValObj then
-            currentFloorNum = targetValObj.Value
-            debugLabel.Text = targetValObj.Name .. ": " .. tostring(currentFloorNum)
-            debugLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
-        else
-            -- Coba cari ulang jika belum ketemu di awal
+        if isAutoSurrenderActive then
+            local targetValObj = nil
             for _, obj in ipairs(player:GetDescendants()) do
                 if obj:IsA("IntValue") or obj:IsA("NumberValue") then
                     local name = obj.Name:lower()
@@ -326,20 +304,29 @@ task.spawn(function()
                     end
                 end
             end
-            debugLabel.Text = "Tower Value: Mencari..."
-            debugLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
+
+            local customTarget = tonumber(surrenderInputBox.Text)
+            local activeTarget = (customTarget and customTarget > 0) and customTarget or 60
+            local currentFloorNum = nil
+            
+            if targetValObj then
+                currentFloorNum = targetValObj.Value
+                debugLabel.Text = targetValObj.Name .. ": " .. tostring(currentFloorNum)
+                debugLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
+            else
+                debugLabel.Text = "Tower Value: Mencari..."
+                debugLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
+            end
+            
+            if RemotesModule and currentFloorNum and type(currentFloorNum) == "number" and currentFloorNum >= activeTarget then
+                pcall(function()
+                    if RemotesModule.defs and RemotesModule.defs.TowerSurrender then
+                        RemotesModule.invoke(RemotesModule.defs.TowerSurrender)
+                    end
+                end)
+                task.wait(5)
+            end
         end
-        
-        -- Eksekusi Surrender jika fitur aktif dan floor sudah mencapai target
-        if isAutoSurrenderActive and RemotesModule and currentFloorNum and type(currentFloorNum) == "number" and currentFloorNum >= activeTarget then
-            pcall(function()
-                if RemotesModule.defs and RemotesModule.defs.TowerSurrender then
-                    RemotesModule.invoke(RemotesModule.defs.TowerSurrender)
-                end
-            end)
-            task.wait(5)
-        end
-        
         task.wait(1)
     end
 end)
@@ -414,5 +401,52 @@ task.spawn(function()
             end)
         end
         task.wait(1)
+    end
+end)
+
+-- LOOP 7: Auto Best Tower (Aman dari fungsi surrender/leave)
+task.spawn(function()
+    while true do
+        if isAutoBestTowerActive then 
+            pcall(function()
+                local detectedBestFloor = 1
+                for _, obj in ipairs(player:GetDescendants()) do
+                    if obj:IsA("IntValue") or obj:IsA("NumberValue") then
+                        local nameLower = obj.Name:lower()
+                        if nameLower:find("tower") or nameLower:find("best") then
+                            if obj.Value > 1 then
+                                detectedBestFloor = obj.Value
+                                break
+                            end
+                        end
+                    end
+                end
+
+                for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+                    if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                        local nameLower = obj.Name:lower()
+                        if (nameLower:find("tower") or nameLower:find("elevator") or nameLower:find("rung")) 
+                           and not nameLower:find("surrender") 
+                           and not nameLower:find("leave") 
+                           and not nameLower:find("exit") 
+                           and not nameLower:find("quit") then
+                            
+                            if obj:IsA("RemoteFunction") then
+                                pcall(function() obj:InvokeServer(detectedBestFloor) end)
+                            elseif obj:IsA("RemoteEvent") then
+                                pcall(function() obj:FireServer(detectedBestFloor) end)
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+        
+        local currentBestDelay = tonumber(bestTowerDelayBox.Text)
+        if not currentBestDelay or currentBestDelay <= 0 then
+            currentBestDelay = bestTowerDelay
+        end
+        
+        task.wait(currentBestDelay)
     end
 end)
